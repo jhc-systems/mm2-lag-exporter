@@ -14,9 +14,9 @@
     <name>mm2-lag-exporter</name>
     <description>mirrormaker-lag-Exporter</description>
     <properties>
-        <java.version>1.8</java.version>
+        <java.version>17</java.version>
         <micrometer.version>1.8.5</micrometer.version>
-        <kafka.client.version>2.7.0</kafka.client.version>
+        <kafka.client.version>3.7.0</kafka.client.version>
         <google.guava.version>31.1-jre</google.guava.version>
         <log4j2.version>2.17.1</log4j2.version>
         <swagger.version>3.0.0</swagger.version>
