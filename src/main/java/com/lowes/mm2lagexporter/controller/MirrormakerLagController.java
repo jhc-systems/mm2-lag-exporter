@@ -1,17 +1,19 @@
 package com.lowes.mm2lagexporter.controller;
 
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.lowes.mm2lagexporter.exception.MMLagExporterException;
 import com.lowes.mm2lagexporter.model.ConsumerStatus;
 import com.lowes.mm2lagexporter.model.MM2LagInfo;
 import com.lowes.mm2lagexporter.service.LagExporterService;
 import com.lowes.mm2lagexporter.service.SourceConsumerService;
 import com.lowes.mm2lagexporter.service.TargetConsumerService;
-import io.swagger.annotations.ApiOperation;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RestController;
+
+import io.swagger.v3.oas.annotations.Operation;
 
 /**
  * Class to expose endpoint for below operations:
@@ -40,7 +42,7 @@ public class MirrormakerLagController {
      * @throws MMLagExporterException ex: topic not exist
      */
     @GetMapping(value = "/lag", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ApiOperation(value = "Provides the mirroring lag information of all the configured topics", response = MM2LagInfo.class)
+    @Operation(description = "Provides the mirroring lag information of all the configured topics")
     public MM2LagInfo getLagInfo(String topic) throws MMLagExporterException {
         if (StringUtils.isNotBlank(topic)) {
             return lagExporterService.getTopicLagInfo(topic);
@@ -54,7 +56,7 @@ public class MirrormakerLagController {
      * @return ConsumerStatus
      */
     @GetMapping(value = "/source-consumer/status", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ApiOperation(value = "Status of source consumer")
+    @Operation(description = "Status of source consumer")
     public ConsumerStatus getSourceConsumerStatus() {
         return sourceConsumerService.getSourceConsumerStatus();
     }
@@ -63,7 +65,7 @@ public class MirrormakerLagController {
      * Restarts the Source kafka consumer client.
      */
     @PostMapping(value = "/source-consumer/restart", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ApiOperation(value = "Restarts the source cluster consumer")
+    @Operation(description = "Restarts the source cluster consumer")
     public void restartSourceConsumer() {
         sourceConsumerService.restartSourceConsumer();
     }
@@ -74,7 +76,7 @@ public class MirrormakerLagController {
      * @return ConsumerStatus
      */
     @GetMapping(value = "/target-consumer/status", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ApiOperation(value = "Status of target consumer")
+    @Operation(description = "Status of target consumer")
     public ConsumerStatus getTargetConsumerStatus() {
         return targetConsumerService.getTargetConsumerStatus();
     }
@@ -83,7 +85,7 @@ public class MirrormakerLagController {
      * Restarts the Source kafka consumer client.
      */
     @PostMapping(value = "/target-consumer/restart", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ApiOperation(value = "Restarts the target cluster consumer")
+     @Operation(description = "Restarts the target cluster consumer")
     public void restartTargetConsumer() {
         targetConsumerService.restartTargetConsumer();
     }

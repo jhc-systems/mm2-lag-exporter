@@ -76,7 +76,7 @@ class TargetConsumerServiceTest {
         });
         assertThat(thrown)
                 .isInstanceOf(ConfigException.class)
-                .hasMessageContaining("Missing required configuration \"key.deserializer\" which has no default value");
+                .hasMessageContaining("Invalid value null for configuration key.deserializer: must be non-null.");
     }
 
     @Test
@@ -97,7 +97,7 @@ class TargetConsumerServiceTest {
         });
         assertThat(thrown)
                 .isInstanceOf(ConfigException.class)
-                .hasMessageContaining("Missing required configuration \"key.deserializer\" which has no default value");
+                .hasMessageContaining("Invalid value null for configuration key.deserializer: must be non-null.");
     }
 
     @Test
