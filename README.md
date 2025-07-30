@@ -97,6 +97,8 @@ docker build -t mm2-lag-exporter
 docker run -it mm2-lag-exporter
 ```
 
+configure with normal spring configuration parameters `--spring.config.location=file:/path/application.properties`
+
 ## Quickstart API Usage examples
 
 ```bash
