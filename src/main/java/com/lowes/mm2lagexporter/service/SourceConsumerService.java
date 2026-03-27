@@ -1,12 +1,15 @@
 package com.lowes.mm2lagexporter.service;
 
-import com.google.common.base.Preconditions;
-import com.google.common.base.Strings;
-import com.lowes.mm2lagexporter.config.ConnectorConfig;
-import com.lowes.mm2lagexporter.model.*;
-import com.lowes.mm2lagexporter.utils.Constants;
-import com.lowes.mm2lagexporter.utils.Status;
-import lombok.extern.slf4j.Slf4j;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.stream.Collectors;
+
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.PartitionInfo;
@@ -18,10 +21,18 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
+import com.lowes.mm2lagexporter.config.ConnectorConfig;
+import com.lowes.mm2lagexporter.model.ConnectorInfo;
+import com.lowes.mm2lagexporter.model.ConsumerStatus;
+import com.lowes.mm2lagexporter.model.MM2LagInfo;
+import com.lowes.mm2lagexporter.model.PartitionOffsetInfo;
+import com.lowes.mm2lagexporter.model.TopicInfo;
+import com.lowes.mm2lagexporter.utils.Constants;
+import com.lowes.mm2lagexporter.utils.Status;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Creates a new Consumer instance to read the logend offset of the topics in the source cluster.
@@ -104,31 +115,36 @@ public class SourceConsumerService {
                             .map(partitionInfo -> new TopicPartition(partitionInfo.topic(), partitionInfo.partition()))
                             .collect(Collectors.toList());
 
-            // Fetching Log end offsets for each Partitions in the topic.
-            sourceConsumer.endOffsets(topicPartitions).forEach((topic, offset) -> {
+            // Fetching Log end offsets and beginning offsets for each Partitions in the topic.
+            Map<TopicPartition, Long> endOffsets = sourceConsumer.endOffsets(topicPartitions);
+            Map<TopicPartition, Long> beginningOffsets = sourceConsumer.beginningOffsets(topicPartitions);
+
+            endOffsets.forEach((topic, endOffset) -> {
                         String topicValue = topic.topic();
                         int partitionValue = topic.partition();
-                        long offsetValue = offset;
+                        long endOffsetValue = endOffset;
+                        long beginningOffsetValue = beginningOffsets.get(topic);
 
                         if (connectorInfo.getTopics() == null) {
                             // If Map is null
-                            connectorInfo.setTopics(createTopicInfoMap(topicValue, partitionValue, offsetValue));
+                            connectorInfo.setTopics(createTopicInfoMap(topicValue, partitionValue, endOffsetValue, beginningOffsetValue));
                         } else if (connectorInfo.getTopics().containsKey(topicValue)) {
 
                             // If the topic is available in the Map
                             if (connectorInfo.getTopics().get(topicValue).getPartitions().containsKey(partitionValue)) {
-                                connectorInfo.getTopics().get(topicValue).getPartitions().get(partitionValue).setLogEndOffset(offsetValue);
+                                connectorInfo.getTopics().get(topicValue).getPartitions().get(partitionValue).setLogEndOffset(endOffsetValue);
                                 connectorInfo.getTopics().get(topicValue).getPartitions().get(partitionValue).setLogEndOffsetUpdatedAt(Timestamp.valueOf(LocalDateTime.now()));
+                                connectorInfo.getTopics().get(topicValue).getPartitions().get(partitionValue).setLogStartOffset(beginningOffsetValue);
                             } else {
 
                                 //if new Partition is added to the topics
-                                PartitionOffsetInfo partitionOffsetInfo = createPartitionOffsetInfo(topicValue, partitionValue, offsetValue);
+                                PartitionOffsetInfo partitionOffsetInfo = createPartitionOffsetInfo(topicValue, partitionValue, endOffsetValue, beginningOffsetValue);
                                 connectorInfo.getTopics().get(topicValue).getPartitions().put(partitionValue, partitionOffsetInfo);
                             }
                         } else {
 
                             // If no topic is available in the Map
-                            connectorInfo.getTopics().put(topicValue, new TopicInfo(topicValue, createPartitionOffsetInfoMap(topicValue, partitionValue, offsetValue)));
+                            connectorInfo.getTopics().put(topicValue, new TopicInfo(topicValue, createPartitionOffsetInfoMap(topicValue, partitionValue, endOffsetValue, beginningOffsetValue)));
                         }
                     }
             );
@@ -144,26 +160,27 @@ public class SourceConsumerService {
         return connectorMapSource;
     }
 
-    private Map<String, TopicInfo> createTopicInfoMap(String topicName, int partition, long offset) {
+    private Map<String, TopicInfo> createTopicInfoMap(String topicName, int partition, long endOffset, long beginningOffset) {
         Map<String, TopicInfo> topicMap = new HashMap<>();
-        Map<Integer, PartitionOffsetInfo> partitionInfo = createPartitionOffsetInfoMap(topicName, partition, offset);
+        Map<Integer, PartitionOffsetInfo> partitionInfo = createPartitionOffsetInfoMap(topicName, partition, endOffset, beginningOffset);
         topicMap.put(topicName, new TopicInfo(topicName, partitionInfo));
         return topicMap;
     }
 
-    private Map<Integer, PartitionOffsetInfo> createPartitionOffsetInfoMap(String topicName, int partition, long offset) {
+    private Map<Integer, PartitionOffsetInfo> createPartitionOffsetInfoMap(String topicName, int partition, long endOffset, long beginningOffset) {
         Map<Integer, PartitionOffsetInfo> partitionInfo = new HashMap<>();
-        PartitionOffsetInfo partitionOffsetInfo = createPartitionOffsetInfo(topicName, partition, offset);
+        PartitionOffsetInfo partitionOffsetInfo = createPartitionOffsetInfo(topicName, partition, endOffset, beginningOffset);
         partitionInfo.put(partition, partitionOffsetInfo);
         return partitionInfo;
     }
 
-    private PartitionOffsetInfo createPartitionOffsetInfo(String topicName, int partition, long offset) {
+    private PartitionOffsetInfo createPartitionOffsetInfo(String topicName, int partition, long endOffset, long beginningOffset) {
         PartitionOffsetInfo partitionOffsetInfo = new PartitionOffsetInfo();
         partitionOffsetInfo.setTopicName(topicName);
         partitionOffsetInfo.setPartition(partition);
-        partitionOffsetInfo.setLogEndOffset(offset);
+        partitionOffsetInfo.setLogEndOffset(endOffset);
         partitionOffsetInfo.setLogEndOffsetUpdatedAt(Timestamp.valueOf(LocalDateTime.now()));
+        partitionOffsetInfo.setLogStartOffset(beginningOffset);
         return partitionOffsetInfo;
     }
 
