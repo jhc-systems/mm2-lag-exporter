@@ -1,3 +1,4 @@
-version=2.0.0
-docker build . -t eu.gcr.io/$TF_VAR_project/mm-lag-exporter:$version
-docker push eu.gcr.io/$TF_VAR_project/mm-lag-exporter:$version
+version=2.1.0
+mvn clean deploy -P  jhc.release
+podman build . -t eu.gcr.io/$TF_VAR_project/mm-lag-exporter:$version
+podman push eu.gcr.io/$TF_VAR_project/mm-lag-exporter:$version

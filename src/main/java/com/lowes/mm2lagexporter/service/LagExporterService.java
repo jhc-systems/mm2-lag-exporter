@@ -10,6 +10,7 @@ import com.lowes.mm2lagexporter.model.TopicInfo;
 import com.lowes.mm2lagexporter.utils.Constants;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
  * also scheduler is available to get the lag information from
  * the topics and to update the metrics.
  */
+@Slf4j
 @Service
 public class LagExporterService {
     private final MM2LagInfo mM2LagInfo;
@@ -120,6 +122,12 @@ public class LagExporterService {
     }
 
     private void updateConnectorLagMetrics(String connector, ConnectorInfo connectorInfo) {
+        // Add null safety check for topics
+        if (connectorInfo.getTopics() == null) {
+            log.debug("Topics not initialized yet for connector: {}", connector);
+            return;
+        }
+
         for (String topic : connectorInfo.getTopics().keySet()) {
             if (connectorInfo.getTopics().get(topic).getPartitions() != null) {
                 updateTopicPartitionLagMetrics(connector, connectorInfo, topic);
@@ -128,9 +136,24 @@ public class LagExporterService {
     }
 
     private void updateTopicPartitionLagMetrics(String connector, ConnectorInfo connectorInfo, String topic) {
+        // Add null safety checks
+        if (connectorInfo.getTopics() == null ||
+            connectorInfo.getTopics().get(topic) == null ||
+            connectorInfo.getTopics().get(topic).getPartitions() == null) {
+            log.debug("Topic or partitions not initialized yet for connector: {}, topic: {}", connector, topic);
+            return;
+        }
+
         String keyString;
         Set<Integer> partitions = connectorInfo.getTopics().get(topic).getPartitions().keySet();
         for (Integer partition : partitions) {
+            // Additional null check for partition data
+            var partitionInfo = connectorInfo.getTopics().get(topic).getPartitions().get(partition);
+            if (partitionInfo == null) {
+                log.debug("Partition info not available for connector: {}, topic: {}, partition: {}", connector, topic, partition);
+                continue;
+            }
+
             keyString = String.format("[connector-%s,topic-%s,partition-%s]", connector, topic, partition);
             if (!logEndOffset.containsKey(keyString)) {
                 logEndOffset.put(keyString, new AtomicLong(0));
@@ -157,9 +180,9 @@ public class LagExporterService {
                         .description(Constants.MMOFFSET_METRICS_DOC)
                         .register(meterRegistry);
             }
-            // Update logend offset and mirrored offset with latest offset values
-            logEndOffset.get(keyString).set(connectorInfo.getTopics().get(topic).getPartitions().get(partition).getLogEndOffset());
-            mmOffset.get(keyString).set(connectorInfo.getTopics().get(topic).getPartitions().get(partition).getMmOffset());
+            // Update logend offset and mirrored offset with latest offset values using safe reference
+            logEndOffset.get(keyString).set(partitionInfo.getLogEndOffset());
+            mmOffset.get(keyString).set(partitionInfo.getMmOffset());
         }
     }
 

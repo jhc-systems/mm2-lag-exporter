@@ -1,5 +1,12 @@
 # MM2 Lag Exporter
 
+## Upgrades
+
+latest version changes the configuration from
+connectors={ 'MirrorSourceConnector':'topic1,topic2,topic3' }
+to
+connectors.MirrorSourceConnector=topic1,topic2,topic3
+
 ## Mirrormaker 2
 
 Apache Kafka MirrorMaker2 replicates data across two Kafka clusters, within or across data centers. MirrorMaker takes
@@ -42,7 +49,7 @@ For LagExporter to calculate the lag, it requires topic partition logend offset 
 | `target.cluster.alias`                      |                     | source cluster alias                                                                                                             |
 | `target.consumer.groupid`                   |                     | Consumer group name of the target consumer                                                                                       |
 | `connect.offset.topic`                      |                     | Connect offset internal topic name in the target kafka cluster                                                                   |
-| `connectors`                                |                     | Name of the mirrormaker2 connectors and topics.If multiple mirror source connectors are running with same source and target cluster means those connectors can be added like below { 'connector1-name':'topic1,topic2','connector2-name':'topic3,topic4' }                                                                                |
+| `connectors`                                |                     | Name of the mirrormaker2 connectors and topics.If multiple mirror source connectors are running with same source and target cluster means those connectors can be added on new lines e.g. `connector.connector1-name=topic1,topic2` and `connector.connector2-name=topic3,topic4`                                                                                |
 | `consumer.ssl.enabled`                      | false               | whether ssl is enabled to connect to kafka clusters.true or false                                                                |
 | `management.endpoints.web.exposure.include` | health,prometheus   |                                                                                                                  |
 | `auto.restart.onfailure.enabled`            | false               | Incase of consumer failures whether to restart automatically|
