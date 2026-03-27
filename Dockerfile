@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21.0.7_6-jre-alpine-3.21
+FROM eclipse-temurin:25.0.2_10-jre-alpine-3.23
 USER root
 WORKDIR /opt/kafka/MM2LagExporter
 RUN apk add bash
