@@ -1,9 +1,7 @@
 package com.lowes.mm2lagexporter.config;
 
-import com.lowes.mm2lagexporter.model.ConsumerStatus;
-import com.lowes.mm2lagexporter.utils.Constants;
-import com.lowes.mm2lagexporter.utils.Status;
-import lombok.Data;
+import java.util.Properties;
+
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -18,7 +16,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
-import java.util.Properties;
+import com.lowes.mm2lagexporter.model.ConsumerStatus;
+import com.lowes.mm2lagexporter.utils.Constants;
+import com.lowes.mm2lagexporter.utils.Status;
+
+import lombok.Data;
 
 @Data
 @Configuration
@@ -41,6 +43,12 @@ public class SourceConsumerConfig {
 
     @Value("${source.sasl.Jaas.config:#{null}}")
     private String saslJaasConfig;
+
+    @Value("${source.sasl.oauthbearer.token.endpoint.url:#{null}}")
+    private String saslOauthbearerTokenEndpointUrl;
+
+    @Value("${source.sasl.login.callback.handler.class:#{null}}")
+    private String saslLoginCallbackHandlerClass;
 
     @Value("${source.truststore.path:#{null}}")
     private String truststorePath;
@@ -101,6 +109,13 @@ public class SourceConsumerConfig {
                 sourceConsumerProperties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, securityProtocol);
                 sourceConsumerProperties.put(SaslConfigs.SASL_MECHANISM, saslMechanism);
                 sourceConsumerProperties.put(SaslConfigs.SASL_JAAS_CONFIG, saslJaasConfig);
+            }
+            if ("OAUTHBEARER".equals(saslMechanism)) {
+                sourceConsumerProperties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, securityProtocol);
+                sourceConsumerProperties.put(SaslConfigs.SASL_MECHANISM, saslMechanism);
+                sourceConsumerProperties.put(SaslConfigs.SASL_JAAS_CONFIG, saslJaasConfig);
+                putIfNotNull(sourceConsumerProperties, SaslConfigs.SASL_OAUTHBEARER_TOKEN_ENDPOINT_URL, saslOauthbearerTokenEndpointUrl);
+                putIfNotNull(sourceConsumerProperties, SaslConfigs.SASL_LOGIN_CALLBACK_HANDLER_CLASS, saslLoginCallbackHandlerClass);
             }
             sourceConsumerProperties.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, sslEndpointIdentificationAlgorithm);
         }
