@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.lowes.mm2lagexporter</groupId>
     <artifactId>mm2-lag-exporter</artifactId>
-    <version>2.2.0</version>
+    <version>2.3.0</version>
     <name>mm2-lag-exporter</name>
     <description>mirrormaker-lag-Exporter</description>
     <properties>
