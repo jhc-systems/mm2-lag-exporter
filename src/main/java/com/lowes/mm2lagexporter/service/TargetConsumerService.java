@@ -1,6 +1,5 @@
 package com.lowes.mm2lagexporter.service;
 
-import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lowes.mm2lagexporter.config.ConnectorConfig;
@@ -25,6 +24,7 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -113,35 +113,26 @@ public class TargetConsumerService {
             consumerRecords = targetConsumer.poll(Duration.ofMillis(Constants.POLL_TIMEOUT));
             for (ConsumerRecord<String, String> consumerRecord : consumerRecords) {
                 try {
-                    String connectorsTemp = jsonConvertor.treeToValue(jsonConvertor.readTree(consumerRecord.key()).get(0), MMConnectorInfo.class).getConnectorName();
+                    String connectorsTemp = jsonConvertor.readTree(consumerRecord.key()).get(0).asText();
 
                     //Filtering only the required connectors from the kafka message key.Key will contain connector name,source cluster, topics and
                     //partition information. and the message value field will contain the offset details.
                     if (connectorNameList.stream().anyMatch(connectorsTemp::equalsIgnoreCase)) {
                         keyString = consumerRecord.key();
                         valueString = consumerRecord.value();
-                        MMConnectorInfo mmConnectorInfo = jsonConvertor.treeToValue(jsonConvertor.readTree(keyString).get(0), MMConnectorInfo.class);
                         MMPartitionInfo mmPartitionInfo = jsonConvertor.treeToValue(jsonConvertor.readTree(keyString).get(1), MMPartitionInfo.class);
 
-                        connectorValue = mmConnectorInfo.getConnectorName();
+                        connectorValue = connectorsTemp;
                         topicValue = mmPartitionInfo.getTopic();
                         partitionValue = mmPartitionInfo.getPartition();
                         offsetValue = jsonConvertor.readValue(valueString, MMOffsetInfo.class).getOffset();
 
-                        if (mM2LagInfo.getConnector() == null) {
-                            connectorMap = createConnectorMapFromTarget(connectorValue);
-                            mM2LagInfo.setConnector(connectorMap);
-                            connectorInfo = mM2LagInfo.getConnector().get(connectorValue);
-                        } else if (mM2LagInfo.getConnector().containsKey(connectorValue)) {
-                            connectorInfo = mM2LagInfo.getConnector().get(connectorValue);
-                        } else if (!mM2LagInfo.getConnector().containsKey(connectorValue)) {
-                            connectorInfo = new ConnectorInfo(connectorValue, null);
-                            mM2LagInfo.getConnector().put(connectorValue, connectorInfo);
-                        }
+                        connectorInfo = mM2LagInfo.getConnector().computeIfAbsent(connectorValue,
+                                k -> new ConnectorInfo(k, new ConcurrentHashMap<>()));
                         filterAndUpdateLagDetails();
                     }
-                } catch (JsonParseException jsonParseException) {
-                    log.error("mm2-lag-exporter::Error in Parsing Json values {} Failed value {}", jsonParseException, consumerRecord.key());
+                } catch (JsonProcessingException jsonProcessingException) {
+                    log.error("mm2-lag-exporter::Error in Parsing Json values {} Failed value {}", jsonProcessingException, consumerRecord.key());
                 }
             }
         }
@@ -150,19 +141,17 @@ public class TargetConsumerService {
     //Filtering only the requested topics from the config.
     private void filterAndUpdateLagDetails() {
         if (connectorConfig.getConnectors().get(connectorValue).contains(topicValue)) {
-            if (connectorInfo.getTopics() == null) {
-                connectorInfo.setTopics(createTopicInfo(topicValue, getPartitionOffsetInfoMap(topicValue, partitionValue, offsetValue)));
-            } else if (connectorInfo.getTopics().containsKey(topicValue)) {
-                if (connectorInfo.getTopics().get(topicValue).getPartitions().containsKey(partitionValue)) {
-                    connectorInfo.getTopics().get(topicValue).getPartitions().get(partitionValue).setMmOffset(offsetValue);
-                    connectorInfo.getTopics().get(topicValue).getPartitions().get(partitionValue).setMmOffsetUpdatedAt(Timestamp.valueOf(LocalDateTime.now()));
-                } else {
-                    PartitionOffsetInfo partitionOffsetInfo = getPartitionOffsetInfo(topicValue, partitionValue, offsetValue);
-                    connectorInfo.getTopics().get(topicValue).getPartitions().put(partitionValue, partitionOffsetInfo);
-                }
-            } else {
-                connectorInfo.getTopics().put(topicValue, new TopicInfo(topicValue, getPartitionOffsetInfoMap(topicValue, partitionValue, offsetValue)));
-            }
+            TopicInfo topicInfo = connectorInfo.getTopics().computeIfAbsent(topicValue,
+                    k -> new TopicInfo(k, new ConcurrentHashMap<>()));
+            PartitionOffsetInfo partInfo = topicInfo.getPartitions().computeIfAbsent(partitionValue,
+                    k -> {
+                        PartitionOffsetInfo p = new PartitionOffsetInfo();
+                        p.setTopicName(topicValue);
+                        p.setPartition(k);
+                        return p;
+                    });
+            partInfo.setMmOffset(offsetValue);
+            partInfo.setMmOffsetUpdatedAt(Timestamp.valueOf(LocalDateTime.now()));
         }
     }
 

@@ -34,8 +34,8 @@ public class LagExporterService {
     private final MM2LagInfo mM2LagInfo;
     private final ConnectorConfig connectorConfig;
     private final MeterRegistry meterRegistry;
-    private final Map<String, AtomicLong> logEndOffset;
     private final Map<String, AtomicLong> mmOffset;
+    private final Map<String, AtomicLong> lag;
 
     public LagExporterService(MM2LagInfo mM2LagInfo,
                               ConnectorConfig connectorConfig,
@@ -43,8 +43,8 @@ public class LagExporterService {
         this.mM2LagInfo = mM2LagInfo;
         this.connectorConfig = connectorConfig;
         this.meterRegistry = meterRegistry;
-        logEndOffset = new HashMap<>();
         mmOffset = new HashMap<>();
+        lag = new HashMap<>();
     }
 
     /**
@@ -155,19 +155,7 @@ public class LagExporterService {
             }
 
             keyString = String.format("[connector-%s,topic-%s,partition-%s]", connector, topic, partition);
-            if (!logEndOffset.containsKey(keyString)) {
-                logEndOffset.put(keyString, new AtomicLong(0));
-
-                // Push the logend offset metrics of the topics to prometheus
-                Gauge.builder(Constants.LOGENDOFFSET_METRICS_NAME, logEndOffset.get(keyString), Number::doubleValue)
-                        .tag(Constants.CONNECTOR, connectorInfo.getConnectorName())
-                        .tag(Constants.SOURCE_CLUSTER, mM2LagInfo.getSourceClusterAlias())
-                        .tag(Constants.TARGET_CLUSTER, mM2LagInfo.getTargetClusterAlias())
-                        .tag(Constants.TOPIC, topic)
-                        .tag(Constants.PARTITION, String.valueOf(partition))
-                        .description(Constants.LOGENDOFFSET_METRICS_DOC)
-                        .register(meterRegistry);
-
+            if (!mmOffset.containsKey(keyString)) {
                 mmOffset.put(keyString, new AtomicLong(0));
 
                 // Push the mirrored offset metrics of the topics to prometheus
@@ -179,10 +167,22 @@ public class LagExporterService {
                         .tag(Constants.PARTITION, String.valueOf(partition))
                         .description(Constants.MMOFFSET_METRICS_DOC)
                         .register(meterRegistry);
+
+                lag.put(keyString, new AtomicLong(0));
+
+                // Push the lag metrics of the topics to prometheus
+                Gauge.builder(Constants.LAG_METRICS_NAME, lag.get(keyString), Number::doubleValue)
+                        .tag(Constants.CONNECTOR, connectorInfo.getConnectorName())
+                        .tag(Constants.SOURCE_CLUSTER, mM2LagInfo.getSourceClusterAlias())
+                        .tag(Constants.TARGET_CLUSTER, mM2LagInfo.getTargetClusterAlias())
+                        .tag(Constants.TOPIC, topic)
+                        .tag(Constants.PARTITION, String.valueOf(partition))
+                        .description(Constants.LAG_METRICS_DOC)
+                        .register(meterRegistry);
             }
-            // Update logend offset and mirrored offset with latest offset values using safe reference
-            logEndOffset.get(keyString).set(partitionInfo.getLogEndOffset());
+            // Update mirrored offset and lag with latest values using safe reference
             mmOffset.get(keyString).set(partitionInfo.getMmOffset());
+            lag.get(keyString).set(partitionInfo.getLag());
         }
     }
 

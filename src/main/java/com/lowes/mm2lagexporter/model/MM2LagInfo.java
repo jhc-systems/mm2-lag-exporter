@@ -8,6 +8,7 @@ import lombok.Setter;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -20,5 +21,5 @@ public class MM2LagInfo {
     private String targetClusterBrokerUrl;
     private String sourceClusterAlias;
     private String targetClusterAlias;
-    private Map<String, ConnectorInfo> connector;
+    private Map<String, ConnectorInfo> connector = new ConcurrentHashMap<>();
 }

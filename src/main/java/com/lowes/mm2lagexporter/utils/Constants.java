@@ -10,10 +10,10 @@ public class Constants {
     public static final String SOURCE_CLUSTER = "sourcecluster";
     public static final String TARGET_CLUSTER = "targetcluster";
     public static final String CONNECTOR = "connector";
-    public static final String LOGENDOFFSET_METRICS_NAME = "mirrormaker_source_topics_logendoffset";
-    public static final String LOGENDOFFSET_METRICS_DOC = "The Log end offset of source cluster Topics";
     public static final String MMOFFSET_METRICS_NAME = "mirrormaker_currentoffset";
     public static final String MMOFFSET_METRICS_DOC = "The current offset of mirrormaker connector process";
+    public static final String LAG_METRICS_NAME = "mirrormaker_lag";
+    public static final String LAG_METRICS_DOC = "The mirroring lag (logEndOffset - currentOffset) per topic partition";
     public static final long POLL_TIMEOUT = 1000;
     public static final String SCHEDULER_INITIAL_DELAY = "20000";
     public static final String SCHEDULER_FREQUENCY = "1000";

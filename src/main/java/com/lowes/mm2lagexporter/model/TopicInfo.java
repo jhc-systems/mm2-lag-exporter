@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -14,5 +15,5 @@ import java.util.Map;
 @Setter
 public class TopicInfo {
     private String topicName;
-    private Map<Integer, PartitionOffsetInfo> partitions;
+    private Map<Integer, PartitionOffsetInfo> partitions = new ConcurrentHashMap<>();
 }

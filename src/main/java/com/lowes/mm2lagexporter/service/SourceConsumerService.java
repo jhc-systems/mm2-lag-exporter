@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -78,16 +79,8 @@ public class SourceConsumerService {
                     topicsList = connectors.getValue();
                     Preconditions.checkState(!Strings.isNullOrEmpty(topicsList.toString()), "Topic Name is Empty or Null");
 
-                    if (mM2LagInfo.getConnector() == null) {
-                        connectorMap = createConnectorMapFromSource(connector);
-                        mM2LagInfo.setConnector(connectorMap);
-                        connectorInfo = mM2LagInfo.getConnector().get(connector);
-                    } else if (mM2LagInfo.getConnector().containsKey(connector)) {
-                        connectorInfo = mM2LagInfo.getConnector().get(connector);
-                    } else if (!mM2LagInfo.getConnector().containsKey(connector)) {
-                        connectorInfo = new ConnectorInfo(connector, null);
-                        mM2LagInfo.getConnector().put(connector, connectorInfo);
-                    }
+                    connectorInfo = mM2LagInfo.getConnector().computeIfAbsent(connector,
+                            k -> new ConnectorInfo(k, new ConcurrentHashMap<>()));
                     Iterator<String> topicIterator = topicsList.iterator();
                     while (topicIterator.hasNext()) {
                         String topicName = topicIterator.next();
@@ -147,35 +140,22 @@ public class SourceConsumerService {
                             log.debug("mm2-lag-exporter::Processing topic={}, partition={}, endOffset={}, beginningOffset={}",
                                      topicValue, partitionValue, endOffsetValue, beginningOffsetValue);
 
-                            if (connectorInfo.getTopics() == null) {
-                                // If Map is null
-                                connectorInfo.setTopics(createTopicInfoMap(topicValue, partitionValue, endOffsetValue, beginningOffsetValue));
-                            } else if (connectorInfo.getTopics().containsKey(topicValue)) {
+                            TopicInfo topicInfo = connectorInfo.getTopics().computeIfAbsent(topicValue,
+                                    k -> new TopicInfo(k, new ConcurrentHashMap<>()));
+                            PartitionOffsetInfo partInfo = topicInfo.getPartitions().computeIfAbsent(partitionValue,
+                                    k -> {
+                                        PartitionOffsetInfo p = new PartitionOffsetInfo();
+                                        p.setTopicName(topicValue);
+                                        p.setPartition(k);
+                                        return p;
+                                    });
+                            partInfo.setLogEndOffset(endOffsetValue);
+                            partInfo.setLogEndOffsetUpdatedAt(Timestamp.valueOf(LocalDateTime.now()));
+                            partInfo.setLogStartOffset(beginningOffsetValue);
+                            partInfo.setLogStartOffsetUpdatedAt(Timestamp.valueOf(LocalDateTime.now()));
 
-                                // If the topic is available in the Map
-                                if (connectorInfo.getTopics().get(topicValue).getPartitions().containsKey(partitionValue)) {
-                                    var partition = connectorInfo.getTopics().get(topicValue).getPartitions().get(partitionValue);
-                                    partition.setLogEndOffset(endOffsetValue);
-                                    partition.setLogEndOffsetUpdatedAt(Timestamp.valueOf(LocalDateTime.now()));
-                                    partition.setLogStartOffset(beginningOffsetValue);
-                                    partition.setLogStartOffsetUpdatedAt(Timestamp.valueOf(LocalDateTime.now()));
-                                    log.debug("mm2-lag-exporter::Updated existing partition - topic={}, partition={}, endOffset={}, startOffset={}",
-                                             topicValue, partitionValue, endOffsetValue, beginningOffsetValue);
-                                } else {
-
-                                    //if new Partition is added to the topics
-                                    PartitionOffsetInfo partitionOffsetInfo = createPartitionOffsetInfo(topicValue, partitionValue, endOffsetValue, beginningOffsetValue);
-                                    connectorInfo.getTopics().get(topicValue).getPartitions().put(partitionValue, partitionOffsetInfo);
-                                    log.debug("mm2-lag-exporter::Added new partition - topic={}, partition={}, endOffset={}, startOffset={}",
-                                             topicValue, partitionValue, endOffsetValue, beginningOffsetValue);
-                                }
-                            } else {
-
-                                // If no topic is available in the Map
-                                connectorInfo.getTopics().put(topicValue, new TopicInfo(topicValue, createPartitionOffsetInfoMap(topicValue, partitionValue, endOffsetValue, beginningOffsetValue)));
-                                log.debug("mm2-lag-exporter::Added new topic - topic={}, partition={}, endOffset={}, startOffset={}",
-                                         topicValue, partitionValue, endOffsetValue, beginningOffsetValue);
-                            }
+                            log.debug("mm2-lag-exporter::Updated partition - topic={}, partition={}, endOffset={}, startOffset={}",
+                                     topicValue, partitionValue, endOffsetValue, beginningOffsetValue);
                         }
                 );
             } else {

@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -13,5 +14,5 @@ import java.util.Map;
 @Setter
 public class ConnectorInfo {
     private String connectorName;
-    private Map<String, TopicInfo> topics;
+    private Map<String, TopicInfo> topics = new ConcurrentHashMap<>();
 }
