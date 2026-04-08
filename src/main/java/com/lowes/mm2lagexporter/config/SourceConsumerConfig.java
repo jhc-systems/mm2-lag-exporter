@@ -45,7 +45,7 @@ public class SourceConsumerConfig {
     @Value("${source.truststore.path:#{null}}")
     private String truststorePath;
 
-    @Value("${source.ssl.truststore.type:JKS}")
+    @Value("${source.ssl.truststore.type:#{null}}")
     private String sslTruststoreType;
 
     @Value("${source.truststore.password:#{null}}")
@@ -94,7 +94,7 @@ public class SourceConsumerConfig {
                 sourceConsumerProperties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, securityProtocol);
                 sourceConsumerProperties.put(SaslConfigs.SASL_MECHANISM, saslMechanism);
                 sourceConsumerProperties.put(SaslConfigs.SASL_JAAS_CONFIG, saslJaasConfig);
-                sourceConsumerProperties.put(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, sslTruststoreType);
+                putIfNotNull(sourceConsumerProperties, SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, sslTruststoreType);
                 putIfNotNull(sourceConsumerProperties, SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, truststorePath);
                 putIfNotNull(sourceConsumerProperties, SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, truststorePassword);
             } else if (securityProtocol.equals(SecurityProtocol.SASL_PLAINTEXT.name)) {

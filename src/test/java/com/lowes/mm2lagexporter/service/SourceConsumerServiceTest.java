@@ -1,5 +1,28 @@
 package com.lowes.mm2lagexporter.service;
 
+import java.time.Duration;
+import java.util.Map;
+import java.util.Properties;
+
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.config.ConfigException;
+import org.apache.logging.log4j.util.Strings;
+import static org.assertj.core.api.Assertions.assertThat;
+import org.assertj.core.api.AssertionsForClassTypes;
+import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.opentest4j.AssertionFailedError;
+import org.springframework.kafka.test.context.EmbeddedKafka;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lowes.mm2lagexporter.config.ConnectorConfig;
@@ -8,29 +31,6 @@ import com.lowes.mm2lagexporter.model.ConsumerStatus;
 import com.lowes.mm2lagexporter.model.MM2LagInfo;
 import com.lowes.mm2lagexporter.utils.Constants;
 import com.lowes.mm2lagexporter.utils.Status;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.config.ConfigException;
-import org.apache.logging.log4j.util.Strings;
-import org.assertj.core.api.AssertionsForClassTypes;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.opentest4j.AssertionFailedError;
-import org.springframework.kafka.test.context.EmbeddedKafka;
-
-import java.time.Duration;
-import java.util.Map;
-import java.util.Properties;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
-import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @EmbeddedKafka(partitions = 1, brokerProperties = {"listeners=PLAINTEXT://localhost:9092", "port=9092"})
@@ -76,7 +76,7 @@ class SourceConsumerServiceTest {
         });
         AssertionsForClassTypes.assertThat(thrown)
                 .isInstanceOf(ConfigException.class)
-                .hasMessageContaining("Missing required configuration \"key.deserializer\" which has no default value");
+                .hasMessageContaining("Invalid value null for configuration key.deserializer: must be non-null.");
     }
 
     @Test
@@ -116,7 +116,7 @@ class SourceConsumerServiceTest {
         });
         AssertionsForClassTypes.assertThat(thrown)
                 .isInstanceOf(ConfigException.class)
-                .hasMessageContaining("Missing required configuration \"key.deserializer\" which has no default value");
+                .hasMessageContaining("Invalid value null for configuration key.deserializer: must be non-null.");
     }
 
     @Test

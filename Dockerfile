@@ -1,6 +1,7 @@
-FROM adoptopenjdk:11-jre-hotspot
+FROM eclipse-temurin:25.0.2_10-jre-alpine-3.23
 USER root
 WORKDIR /opt/kafka/MM2LagExporter
+RUN apk add bash
 RUN adduser --uid 10101 -S kafka
 RUN chown -R 10101 /opt/kafka/MM2LagExporter
 ADD target/mm2-lag-exporter*.jar /opt/kafka/MM2LagExporter/mm2-lag-exporter.jar
